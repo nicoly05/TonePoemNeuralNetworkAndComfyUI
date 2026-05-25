@@ -1,10 +1,7 @@
 """
 inference_generative.py
 
-Generative inference engine for 17-key C kalimba.
-
-Identical output pipeline to inference.py (retrieval), but instead of
-blending dataset files the audio is generated via DDPM reverse diffusion:
+Generative inference pipeline:
 
   1. Detect pitch → snap to nearest kalimba note → cluster
   2. Volume → periphery (cluster centre vs edge)
@@ -74,19 +71,16 @@ PITCH_FMAX = float(KALIMBA_HZ[-1]) * 1.15
 # ── Parameters ────────────────────────────────────────────────────────────────
 RMS_SOFT            = 0.03
 RMS_LOUD            = 0.25
-DDPM_STEPS          = 50          # reverse diffusion steps (speed vs quality)
-GUIDANCE_STRENGTH   = 0.3        # nudge toward cluster centroid per step
+DDPM_STEPS          = 50         
+GUIDANCE_STRENGTH   = 0.3      
 MAX_SHIFT_SEMITONES = 14.0
 ATTACK_S            = 0.005
 RELEASE_S           = 2.0
 
-# Fixed output length — generative audio doesn't have a natural file length
-# so we define the duration explicitly
 OUTPUT_S            = 3.0
 OUTPUT_SAMPLES      = int(TARGET_SR * OUTPUT_S)
 
-# EnCodec internal frame rate at 48kHz
-ENCODEC_FRAME_RATE  = 75         # frames per second
+ENCODEC_FRAME_RATE  = 75        
 
 # ── Effects ───────────────────────────────────────────────────────────────────
 LOWPASS_CUTOFF_HZ   = 4000
@@ -107,7 +101,7 @@ def get_device() -> torch.device:
     return torch.device("cpu")
 
 
-# ── Pitch utilities (identical to retrieval version) ──────────────────────────
+# ── Pitch utilities (matching input) ──────────────────────────
 
 def _yin_pitch(audio: np.ndarray, sr: int = TARGET_SR) -> float | None:
     if len(audio) < 512:
@@ -148,10 +142,7 @@ def _pyin_pitch(audio: np.ndarray, sr: int = TARGET_SR) -> float | None:
 
 def detect_pitch_robust(audio: np.ndarray,
                         sr: int = TARGET_SR) -> float | None:
-    """
-    Detect pitch from the loudest 50ms window of the capture.
-    pyin first, yin fallback, octave correction.
-    """
+  
     audio    = audio.astype(np.float32)
     window_n = int(sr * 0.05)
     if len(audio) <= window_n:
@@ -211,9 +202,6 @@ def rms_to_periphery(audio: np.ndarray) -> float:
 # ── Main engine ───────────────────────────────────────────────────────────────
 
 class InferenceEngine:
-    """
-    Generative inference engine. Thread-safe after __init__.
-    """
 
     def __init__(self, k: int = 5, ddpm_steps: int = DDPM_STEPS):
         self.k           = k
@@ -267,9 +255,7 @@ class InferenceEngine:
     def _precompute_source_pitches(self):
         """
         Detect pitch of every source file at startup.
-        Used as reference when pitch-shifting the generated output —
-        we find the nearest dataset sound to the generated latent,
-        use its known pitch as the 'from' value for the shift.
+        Used as reference when pitch-shifting the generated output      
         """
         print("Pre-computing source pitches...")
         self.source_pitches: dict[int, float | None] = {}
@@ -299,19 +285,8 @@ class InferenceEngine:
     def _generate_latent(self, condition: torch.Tensor,
                          target_cluster: int,
                          periphery: float) -> torch.Tensor:
-        """
-        Run DDPM reverse diffusion to produce a novel latent.
 
-        condition     : encoded input audio (128,)
-        target_cluster: which cluster to guide toward
-        periphery     : 0=centroid, 1=cluster edge (from volume)
-
-        Guidance nudges the trajectory toward/away from the centroid
-        in proportion to periphery — soft playing stays near the centre
-        (most typical sounds), loud playing drifts toward the edge
-        (more unusual/contrasting sounds).
-        """
-        cond    = condition.to(self.device).unsqueeze(0)           # (1, 128)
+        cond    = condition.to(self.device).unsqueeze(0)         
         centroid = self.cluster_centers[target_cluster].to(self.device)
 
         step_indices = torch.linspace(
@@ -355,9 +330,8 @@ class InferenceEngine:
 
     def _decode_latent(self, novel_latent: torch.Tensor) -> np.ndarray:
         """
-        Decode a 128-dim latent vector to OUTPUT_SAMPLES of audio.
 
-        Strategy: find the K nearest dataset latents, blend their frame
+        Find the K nearest dataset latents, blend their frame
         sequences weighted by distance, steer toward the novel latent,
         then decode through EnCodec's decoder.
         """
@@ -378,8 +352,8 @@ class InferenceEngine:
             audio = self.audio_cache[idx]
             t     = torch.from_numpy(audio).unsqueeze(0).unsqueeze(0).expand(1, 2, -1)
             with torch.no_grad():
-                frames = self.encodec.encoder(t)   # (1, 128, T_src)
-            frames = frames.squeeze(0)             # (128, T_src)
+                frames = self.encodec.encoder(t) 
+            frames = frames.squeeze(0)           
 
             # Interpolate to T_target length
             frames_interp = torch.nn.functional.interpolate(
@@ -409,15 +383,7 @@ class InferenceEngine:
     def _pitch_shift_output(self, audio: np.ndarray,
                             novel_latent: torch.Tensor,
                             target_hz: float) -> np.ndarray:
-        """
-        Find the dataset sound nearest to the generated latent.
-        Use its pre-computed pitch as the 'from' reference.
-        Shift audio to target_hz.
 
-        This is the same approach as the retrieval version — known source
-        pitch → exact semitone calculation → shift. No secondary detection
-        on the generated output needed.
-        """
         dists   = (self.latents - novel_latent.unsqueeze(0)).norm(dim=-1)
         nearest = int(dists.argmin().item())
         src_hz  = self.source_pitches.get(nearest)
@@ -472,11 +438,7 @@ class InferenceEngine:
     # ── Reverb ────────────────────────────────────────────────────────────────
 
     def _apply_reverb(self, audio: np.ndarray) -> np.ndarray:
-        """
-        Schroeder reverb using scipy.signal.lfilter for each comb/allpass.
-        Identical sound to the loop-based version but runs in C — fast enough
-        for real-time use even on long buffers with multiple parallel workers.
-        """
+        
         sr             = TARGET_SR
         n              = len(audio)
         base_delays_ms = [29.7, 37.1, 41.1, 43.7]
@@ -509,13 +471,11 @@ class InferenceEngine:
             a[delay] = -gain
             return scipy_signal.lfilter(b, a, x.astype(np.float64)).astype(np.float32)
 
-        # Four parallel comb filters summed
         wet = np.zeros(n, dtype=np.float32)
         for delay in comb_delays:
             wet += apply_comb_fast(audio, delay, comb_gain(delay))
         wet /= len(comb_delays)
 
-        # Two series allpass filters
         for delay in allpass_delays:
             wet = apply_allpass_fast(wet, delay, allpass_gain)
 
@@ -524,13 +484,7 @@ class InferenceEngine:
     # ── Main entry point ──────────────────────────────────────────────────────
 
     def respond(self, audio_in: np.ndarray) -> tuple[np.ndarray, int]:
-        """
-        Given mono 48kHz audio (short attack capture), return
-        (generated_audio, cluster_int).
 
-        Output is OUTPUT_S seconds of genuinely novel audio generated by
-        diffusion, pitch-forced to the nearest kalimba note.
-        """
         # 1. Detect pitch → snap to kalimba note → cluster
         freq = detect_pitch_robust(audio_in)
         if freq is not None:
@@ -602,7 +556,7 @@ class InferenceEngine:
         return audio_out.astype(np.float32), gen_cluster
 
 
-# ── Standalone test ───────────────────────────────────────────────────────────
+# ── Test ───────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     engine = InferenceEngine(k=5, ddpm_steps=50)
