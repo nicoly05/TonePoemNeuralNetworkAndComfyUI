@@ -1,11 +1,7 @@
 """
 loss.py
 
-Diffusion training loss — simple MSE on predicted vs actual noise.
-
-We use the standard DDPM objective: at each training step, sample a
-random timestep t, add that much noise to a clean latent, ask the model
-to predict the noise, and minimise MSE between prediction and truth.
+Diffusion training loss 
 """
 
 import torch
