@@ -1,63 +1,5 @@
 # TonePoemNeuralNetworkAndComfyUI
 
-
-# For the Neural Networking training the sound outputs
-1) requirements 
-   python3 --version  
-   brew --version 
-   brew install portaudio 
-
-   if you don´t have Homebrew:
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-2) open the folder
-   -> install the folder
-   
-   cd ~/folderPath
-   source venv/bin/activate
-   pip install -r requirements.txt
-   python -c "import numpy; import soundfile; print('OK')"
-
-3) fix the live.py code
-   nano live.py
-   
-  // find and change yours input and output devices
-   INPUT_DEVICE_HINT  = "Microfone" 
-   OUTPUT_DEVICE_HINT = "Alto-falantes"
-   
-   // find "channels=2" and update to
-   channels=1,
-
-   // find and change inside the "_input_callback" function
-   mono = indata[:, 0].astype(np.float32)
-
-   // get out of the nano 
-   Ctrl+O  →  Enter  →  Ctrl+X
-
-4) run the scripts
-   python prepare_audio.py
-   python build_map.py
-   python train.py
-   python live.py --input-device 0 --output-device 1
-
--- in case of errors
-1) ModuleNotFoundError (numpy, soundfile, etc.)
-   venv is not active.
-   Run:
-   source venv/bin/activate
-
-2) PortAudioError — Invalid number of channels
-   The channels=2 error has not yet been corrected to channels=1 in live.py.
-
-3) torch does not install (incompatible version)
-   Run:
-    pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
-    pip install -r requirements.txt --ignore-installed torch torchaudio
-
-4) View available audio devices
-   Run:
-     python live.py --list-devices
-
 # TONE POEM
 
 > A 17-key kalimba performance becomes a generative audiovisual experience in real time.
@@ -111,7 +53,7 @@ Projected output — synthesized sound + generative visuals
 ```
 tone-poem/
 ├── touchdesigner/
-│   └── tone_poem.toe          # TouchDesigner project
+│   └── TonePoem.toe          # TouchDesigner project
 ├── kalimba_bridge/
 │   └── bridge.py              # Flask bridge to ComfyUI
 ├── main_project_third/
@@ -128,8 +70,8 @@ tone-poem/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/tone-poem.git
-cd tone-poem
+git clone https://github.com/your-username/TonePoem.git
+cd TonePoem
 ```
 
 ---
@@ -137,6 +79,133 @@ cd tone-poem
 ### 2. Python environment
 
 ```bash
+# Neural Network — Audio Training Setup
+
+This guide covers how to install, configure and run the neural network responsible for generating sound outputs based on the kalimba input.
+
+---
+
+## Requirements
+
+Make sure you have the following installed before starting:
+
+```bash
+python3 --version
+brew --version
+```
+
+**Install PortAudio** (required for audio I/O):
+
+```bash
+brew install portaudio
+```
+
+> Don't have Homebrew?
+> ```bash
+> /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+> ```
+
+---
+
+## Installation
+
+Navigate to the project folder and activate the virtual environment:
+
+```bash
+cd ~/folderPath
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Verify the installation:
+
+```bash
+python -c "import numpy; import soundfile; print('OK')"
+```
+
+---
+
+## Configure `live.py`
+
+Open the file for editing:
+
+```bash
+nano live.py
+```
+
+**1. Set your audio devices** — find and update these lines:
+
+```python
+INPUT_DEVICE_HINT  = "Microfone"
+OUTPUT_DEVICE_HINT = "Alto-falantes"
+```
+
+**2. Fix input channels** — find `channels=2` and change to:
+
+```python
+channels=1,
+```
+
+**3. Fix the input callback** — inside the `_input_callback` function, find and update:
+
+```python
+mono = indata[:, 0].astype(np.float32)
+```
+
+**Save and exit nano:**
+
+```
+Ctrl+O  →  Enter  →  Ctrl+X
+```
+
+---
+
+## Run
+
+Execute the scripts in this order:
+
+```bash
+python prepare_audio.py
+python build_map.py
+python train.py
+python live.py --input-device 0 --output-device 1
+```
+
+---
+
+## Troubleshooting
+
+**`ModuleNotFoundError` — numpy, soundfile, etc.**
+
+The virtual environment is not active. Run:
+
+```bash
+source venv/bin/activate
+```
+
+---
+
+**`PortAudioError — Invalid number of channels`**
+
+The `channels=2` fix has not been applied yet. Go back to the [Configure live.py](#configure-livepy) section.
+
+---
+
+**`torch` fails to install (incompatible version)**
+
+```bash
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements.txt --ignore-installed torch torchaudio
+```
+
+---
+
+**View available audio devices**
+
+```bash
+python live.py --list-devices
+```
+
 # Enter the neural network folder
 cd main_project_third
 
