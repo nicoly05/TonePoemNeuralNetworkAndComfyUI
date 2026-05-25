@@ -2,10 +2,10 @@
 
 
 # For the Neural Networking training the sound outputs
-1) requirements
-   python3 --version
-   brew --version
-   brew install portaudio
+1) requirements /br
+   python3 --version /br
+   brew --version /br
+   brew install portaudio /br
 
    if you don´t have Homebrew:
    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
