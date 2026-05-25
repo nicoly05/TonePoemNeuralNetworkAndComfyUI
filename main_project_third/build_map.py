@@ -1,23 +1,3 @@
-"""
-build_map.py
-
-Builds the latent map used at inference time:
-  1. Loads the cached EnCodec latent vectors (sounds/latents.pt)
-  2. Runs k-means clustering to divide the space into N_CLUSTERS regions
-  3. Saves everything needed for live inference to models/latent_map.pt
-
-The saved map contains:
-  - latents       : (N, 128) — one vector per sound file
-  - filenames     : list of filenames in the same order as latents
-  - cluster_labels: (N,) — cluster assignment for each sound
-  - cluster_centers: (N_CLUSTERS, 128) — k-means centroids
-  - n_clusters    : int
-
-Usage:
-    python build_map.py
-    python build_map.py --clusters 10   # override cluster count
-"""
-
 import os
 import argparse
 import torch
@@ -28,7 +8,7 @@ from sklearn.decomposition import PCA
 
 from dataset import LatentDataset
 
-N_CLUSTERS  = 7          # configurable — 7 is the default from the design spec
+N_CLUSTERS  = 7       
 MAP_PATH    = "models/latent_map.pt"
 PLOT_PATH   = "models/latent_map_pca.png"
 
@@ -38,8 +18,8 @@ def build_map(n_clusters: int = N_CLUSTERS) -> None:
 
     # ── Load latents ──────────────────────────────────────────────────────────
     ds = LatentDataset()
-    latents_t = ds.latents                          # (N, 128) torch tensor
-    latents   = latents_t.numpy()                   # numpy for sklearn
+    latents_t = ds.latents                     
+    latents   = latents_t.numpy()              
     filenames = ds.files
     N         = len(latents)
 
@@ -48,8 +28,8 @@ def build_map(n_clusters: int = N_CLUSTERS) -> None:
     # ── K-means clustering ────────────────────────────────────────────────────
     print(f"Running k-means with {n_clusters} clusters...")
     kmeans = KMeans(n_clusters=n_clusters, n_init=20, random_state=42)
-    labels = kmeans.fit_predict(latents)            # (N,) int array
-    centers = kmeans.cluster_centers_               # (n_clusters, 128)
+    labels = kmeans.fit_predict(latents)        
+    centers = kmeans.cluster_centers_           
 
     # Print cluster sizes
     for c in range(n_clusters):
@@ -69,8 +49,8 @@ def build_map(n_clusters: int = N_CLUSTERS) -> None:
     # ── PCA visualisation ─────────────────────────────────────────────────────
     print("Generating PCA plot...")
     pca   = PCA(n_components=2)
-    pts   = pca.fit_transform(latents)              # (N, 2)
-    c_pts = pca.transform(centers)                  # (n_clusters, 2)
+    pts   = pca.fit_transform(latents)           
+    c_pts = pca.transform(centers)          
 
     cmap  = plt.get_cmap("tab10")
     fig, ax = plt.subplots(figsize=(8, 6))
