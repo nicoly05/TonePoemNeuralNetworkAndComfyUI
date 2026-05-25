@@ -211,8 +211,8 @@ cd main_project_third
 
 # Create and activate virtual environment
 python3 -m venv venv
-source venv/bin/activate        # macOS
-# venv\Scripts\activate         # Windows
+source venv/bin/activate        # macOS or 
+venv\Scripts\activate         # Windows
 
 # Install dependencies
 pip install numpy sounddevice scipy python-osc torch torchaudio
