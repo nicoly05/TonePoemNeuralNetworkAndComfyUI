@@ -1,13 +1,8 @@
 """
 live_generative.py
 
-Per-note polyphonic echo pipeline for 17-key C kalimba — GENERATIVE version.
+Per-note polyphonic echo pipeline kalimba
 
-Identical architecture to live.py (retrieval) but uses inference_generative.py
-which generates novel audio via DDPM diffusion rather than blending dataset files.
-
-Onset detection, ring buffer output, spectral flux triggering, parallel
-workers, echo delay scheduling — all identical to the retrieval version.
 
 Controls:
     q      — quit
@@ -53,8 +48,6 @@ RING_SECONDS       = 20.0
 RING_SAMPLES       = int(TARGET_SR * RING_SECONDS)
 OUTPUT_BLOCKSIZE   = 512
 
-# Generative inference is slower than retrieval (diffusion takes ~0.5–1s)
-# so we use more workers to keep polyphony responsive
 N_WORKERS          = 4
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -159,11 +152,7 @@ class LiveSystem:
     # ── Onset detector (spectral flux) ────────────────────────────────────────
 
     def _onset_thread(self):
-        """
-        Spectral flux onset detector — identical to retrieval live.py.
-        Fires on new frequency energy appearing, works polyphonically
-        even while previous notes are still ringing.
-        """
+
         print("[onset] Listening (spectral flux)...")
 
         frame_n      = int(TARGET_SR * 0.020)
@@ -225,11 +214,7 @@ class LiveSystem:
     # ── Inference workers ─────────────────────────────────────────────────────
 
     def _inference_worker(self, worker_id: int):
-        """
-        Pulls NoteJobs, runs generative inference, schedules output.
-        Generative inference takes longer than retrieval (~0.5–1s per note)
-        so echo_delay should be set >= 1.0s for clean scheduling.
-        """
+
         print(f"[worker {worker_id}] Ready")
         while self.running:
             try:
