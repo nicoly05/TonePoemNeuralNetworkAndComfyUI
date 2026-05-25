@@ -1,14 +1,9 @@
 """
 dataset.py
 
-Loads all processed WAV files from sounds/clean/, encodes them with the
+Loads all processed WAV files and encodes them with the
 EnCodec 48kHz model, and returns the continuous latent embeddings.
 
-Each file is encoded at its natural length. The mean-pooled latent vector
-is stored alongside the filename and sample count so inference can match
-output length to input length.
-
-Cache: sounds/latents.pt
 """
 
 import os
@@ -31,10 +26,7 @@ def load_encodec() -> EncodecModel:
 
 
 def encode_dataset(model: EncodecModel) -> dict:
-    """
-    Encode every file in CLEAN_DIR to a latent vector at natural length.
-    Returns dict with latents (N, 128), filenames, and lengths (N,) in samples.
-    """
+
     files = sorted([
         f for f in os.listdir(CLEAN_DIR) if f.lower().endswith(".wav")
     ])
@@ -57,27 +49,23 @@ def encode_dataset(model: EncodecModel) -> dict:
             audio_t = torch.from_numpy(audio).unsqueeze(0).unsqueeze(0)
             audio_t = audio_t.expand(1, 2, -1)
 
-            frames = model.encoder(audio_t)              # (1, 128, time)
-            vec    = frames.mean(dim=-1).squeeze(0)      # (128,)
+            frames = model.encoder(audio_t)            
+            vec    = frames.mean(dim=-1).squeeze(0)   
 
             latents.append(vec)
             lengths.append(n_samples)
             print(f"  {fname}  {n_samples/TARGET_SR:.2f}s  →  {vec.shape}")
 
     result = {
-        "latents":   torch.stack(latents, dim=0),        # (N, 128)
+        "latents":   torch.stack(latents, dim=0),    
         "filenames": files,
-        "lengths":   torch.tensor(lengths, dtype=torch.long),  # (N,)
+        "lengths":   torch.tensor(lengths, dtype=torch.long),
     }
     print(f"\nEncoded {len(files)} files, latent dim = {result['latents'].shape[1]}")
     return result
 
 
 class LatentDataset(Dataset):
-    """
-    Dataset of EnCodec latent vectors, one per sound file.
-    Encodes on first use and caches to CACHE_PATH.
-    """
 
     def __init__(self, force_encode: bool = False):
         if not force_encode and os.path.exists(CACHE_PATH):
@@ -89,9 +77,9 @@ class LatentDataset(Dataset):
             torch.save(data, CACHE_PATH)
             print(f"Latents cached to {CACHE_PATH}")
 
-        self.latents   = data["latents"]    # (N, 128)
+        self.latents   = data["latents"]   
         self.files     = data["filenames"]
-        self.lengths   = data["lengths"]    # (N,) sample counts
+        self.lengths   = data["lengths"]   
 
     def __len__(self) -> int:
         return len(self.latents)
